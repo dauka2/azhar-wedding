@@ -365,7 +365,7 @@
   </header>
 
   <!-- ================= ШАҚЫРУ МӘТІНІ ================= -->
-  <section>
+  <section id="invite-section">
     <div class="wrap reveal">
       <div class="eyebrow" style="text-align:center; display:block;">Шақыру</div>
       <div class="invite-card">
@@ -584,6 +584,7 @@ const musicWidget = document.getElementById('musicWidget');
 const musicBtn = document.getElementById('music-btn');
 const bgm = document.getElementById('bgm');
 musicBtn.addEventListener('click', () => {
+  
   if (bgm.paused){
     bgm.play().catch(()=>{});
     musicBtn.classList.add('playing');
@@ -594,6 +595,33 @@ musicBtn.addEventListener('click', () => {
     musicWidget.classList.remove('playing');
   }
 });
+
+function startMusic(){
+  if (bgm.paused){
+    bgm.play().then(() => {
+      musicBtn.classList.add('playing');
+      musicWidget.classList.add('playing');
+    }).catch(()=>{});
+  }
+}
+
+const inviteSection = document.getElementById('invite-section');
+if (inviteSection){
+  const musicIO = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting){
+        startMusic();
+        musicIO.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.5 });
+  musicIO.observe(inviteSection);
+}
+
+/* подстраховка: если браузер заблокировал автозапуск (например Safari),
+   музыка включится при первом клике/тапе где угодно на странице */
+document.addEventListener('click', startMusic, { once: true });
+document.addEventListener('touchstart', startMusic, { once: true });
 
 /* ---------- scroll reveal ---------- */
 const revealEls = document.querySelectorAll('.reveal');
