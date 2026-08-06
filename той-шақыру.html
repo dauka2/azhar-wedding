@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Тойға шақыру</title>
+<meta name="description" content="Той салтанатына шақыру">
+<meta name="theme-color" content="#FBEEEC">
+
+<!-- ============================================================
+  ӨҢДЕУ НҰСҚАУЛЫҒЫ
+  Толтыру қажет жерлер //// TODO //// деп белгіленген (Ctrl+F арқылы іздеңіз).
+  Не өзгерту керек:
+  1. Мереке жылы - қазір 2026 деп қойылды (күні мен уақыты - 7 қараша, 17:00 - сіз бердіңіз)
+  2. Мекеме атауы, мекенжайы, карта сілтемесі
+  3. Телефон нөмірі
+  4. Әуен файлы (assets/music.mp3) және ән атауы/орындаушы (музыка батырмасының айналасында)
+  5. RSVP жауаптары тек осы құрылғының браузерінде сақталады (localStorage) - бұл
+     туралы толығырақ жауаптағы хабарламада жазылған, нақты серверсіз барлық
+     қонақтардың жауабын бір жерге жинау мүмкін емес
+
+============================================================= -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- Шрифттер туралы: атаулар мен тақырыптарға KZ Vivaldi (қолжазба стиліндегі,
+     қазақ әліпбиінің барлық әрпін қолдайтын шрифт, assets/KZ Vivaldi.ttf).
+     Қосымша безендіру мәтіндеріне - PT Serif italic. Негізгі мәтін - Montserrat. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- ^ жауаптарды Excel файлына жүктеп алу үшін керек (SheetJS кітапханасы) -->
+
+<style>
+  @font-face{
+    font-family:'KZ Vivaldi';
+    src:url('assets/KZ Vivaldi.ttf') format('truetype');
+    font-weight:400;
+    font-style:normal;
+    font-display:swap;
+  }
+  :root{
+    /* ---- нәзік раушан-алтын палитра (той көңіл-күйіне сай) ---- */
+    --cream:#FBEEEC;
+    --ivory:#FFFCFA;
+    --beige:#F4D9DA;
+    --beige-deep:#E3AFB4;
+    --gold:#BE9A5F;
+    --gold-light:#DEC08A;
+    --gold-pale:#F1E1C6;
+    --emerald:#732E40;
+    --emerald-soft:#93465A;
+    --espresso:#4A2C33;
+    --espresso-soft:#8C6B70;
+    --shadow: 0 24px 60px -28px rgba(115,46,64,0.32);
+    --ease: cubic-bezier(.22,1,.36,1);
+    --radius: 28px;
+    --radius-sm: 16px;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--cream);
+    color:var(--espresso);
+    font-family:'Montserrat', sans-serif;
+    font-weight:300;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
+  }
+
+  /* Атаулар мен маңызды мәтіндер - иілгіш курсив антиква (PT Serif italic) */
+  h1,h2,h3,.display{ font-family:'KZ Vivaldi','PT Serif', serif; font-style:normal; font-weight:400; letter-spacing:.01em; }
+  .script{ font-family:'PT Serif', serif; font-style:italic; font-weight:400; }
+
+  a{color:inherit;}
+  button{font-family:inherit; cursor:pointer; border:none; background:none;}
+  img{display:block; max-width:100%;}
+  :focus-visible{ outline:2px solid var(--gold); outline-offset:3px; }
+
+  .eyebrow{
+    font-family:'Montserrat', sans-serif;
+    font-size:12px;
+    letter-spacing:.32em;
+    text-transform:uppercase;
+    color:var(--gold);
+    font-weight:500;
+  }
+
+  .wrap{ max-width:520px; margin:0 auto; padding:0 28px; position:relative; }
+
+  /* ---------- decorative ornament (signature element) ---------- */
+  .ornament{ display:block; width:100%; height:auto; overflow:visible; }
+  .ornament path{
+    fill:none;
+    stroke:var(--gold);
+    stroke-width:1.4;
+    stroke-linecap:round;
+    stroke-dasharray:600;
+    stroke-dashoffset:600;
+    transition:stroke-dashoffset 1.8s var(--ease);
+  }
+  .reveal.in-view .ornament path{ stroke-dashoffset:0; }
+
+  .divider{ display:flex; justify-content:center; margin:56px 0; opacity:.9; }
+  .divider .ornament{ width:120px; }
+
+  /* ---------- scroll reveal utility ---------- */
+  .reveal{ opacity:0; transform:translateY(28px); transition:opacity 1s var(--ease), transform 1s var(--ease); }
+  .reveal.in-view{ opacity:1; transform:translateY(0); }
+  .reveal.d1{ transition-delay:.08s; }
+  .reveal.d2{ transition-delay:.16s; }
+  .reveal.d3{ transition-delay:.24s; }
+
+  /* ================= HERO ================= */
+  header.hero{
+    min-height:92svh;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; position:relative; z-index:2;
+    padding:60px 28px 60px;
+    background:none;
+    overflow:hidden;
+  }
+  header.hero .kicker{
+    font-size:12px; letter-spacing:.35em; text-transform:uppercase; color:var(--gold-light);
+    text-shadow:0 2px 12px rgba(30,14,18,.4);
+    opacity:0; animation:fadeUp .9s var(--ease) .1s forwards;
+  }
+  header.hero .names{
+    font-size:clamp(46px,15vw,78px); line-height:1.15; color:var(--ivory);
+    text-shadow:0 6px 26px rgba(20,8,11,.45);
+    opacity:0; animation:fadeUp .9s var(--ease) .4s forwards;
+  }
+  header.hero .names .and{
+    display:block; font-family:'PT Serif',serif; font-style:italic; font-weight:400;
+    font-size:clamp(30px,9vw,48px); letter-spacing:0; text-transform:none; color:var(--gold-light);
+    margin:6px 0; text-shadow:0 4px 16px rgba(20,8,11,.4);
+    line-height:1;
+  }
+  
+  header.hero .subdate{
+    margin-top:22px; font-size:14px; letter-spacing:.22em; color:rgba(255,251,246,.9);
+    text-shadow:0 2px 10px rgba(20,8,11,.35);
+    opacity:0; animation:fadeUp .9s var(--ease) .55s forwards;
+  }
+  @keyframes fadeUp{ from{ opacity:0; transform:translateY(18px);} to{ opacity:1; transform:translateY(0);} }
+
+  /* ================= PHOTO BAND (hero photo) =================
+     Тіркелген фотосурет "Айым мен Нұрсұлтан" атаулары тұрған жерден
+     "Тойға дейін" (кері санақ) блогына дейінгі бүкіл аймақтың
+     ортақ фоны ретінде қолданылады, төменге қарай крем түске
+     жайлап еніп кетеді. */
+  .photo-band{ position:relative; }
+  .photo-band-bg{
+    position:absolute; inset:0; z-index:0;
+    background:url('assets/photo.jpeg') center 25%/cover no-repeat;
+  }
+  .photo-band-overlay{
+    position:absolute; inset:0; z-index:1; pointer-events:none;
+    background:linear-gradient(180deg,
+      rgba(37,17,22,.58) 0%,
+      rgba(37,17,22,.32) 32%,
+      rgba(251,238,236,.55) 62%,
+      rgba(251,238,236,.94) 82%,
+      var(--cream) 100%);
+  }
+  .photo-band > header.hero, .photo-band > section{ position:relative; z-index:2; }
+
+  /* ================= SECTION GENERIC ================= */
+  section{ padding:70px 0; position:relative; }
+  section.dark{
+    margin:0 16px; border-radius:var(--radius); overflow:hidden;
+    background:var(--emerald); color:var(--cream);
+  }
+  section.dark .eyebrow{ color:var(--gold-light); }
+  .section-title{ font-size:clamp(28px,7.5vw,36px); margin-top:10px; }
+  .lead{ margin-top:20px; font-size:16px; line-height:1.85; color:var(--espresso-soft); }
+  section.dark .lead{ color:rgba(251,246,236,.85); }
+
+  /* ---- invitation text ---- */
+  .invite-card{
+    margin-top:8px; padding:44px 30px; background:var(--ivory);
+    border:1px solid var(--beige-deep); border-radius:var(--radius);
+    position:relative; text-align:center; box-shadow:var(--shadow);
+  }
+  .invite-card p{ font-family:'PT Serif',serif; font-style:italic; font-weight:400; font-size:19px; line-height:1.85; color:var(--espresso-soft); }
+  .invite-card p + p{ margin-top:16px; }
+
+  /* ---- countdown ---- */
+  .countdown{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:34px; }
+  .countdown .cell{
+    background:rgba(251,246,236,.06); border:1px solid rgba(251,246,236,.18);
+    border-radius:var(--radius-sm);
+    padding:18px 4px; text-align:center; position:relative;
+  }
+  .countdown .cell .num{ font-family:'PT Serif',serif; font-style:italic; font-size:clamp(22px,6vw,30px); color:var(--gold-light); }
+  .countdown .cell .lab{ margin-top:6px; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:rgba(251,246,236,.65); }
+
+  /* ---- calendar ---- */
+  .calendar-card{
+    margin-top:30px; background:var(--ivory); border:1px solid var(--beige-deep);
+    border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:30px 24px 34px;
+  }
+  .calendar-head{ text-align:center; margin-bottom:20px; }
+  .calendar-head .month{ font-family:'PT Serif',serif; font-style:italic; font-size:19px; color:var(--emerald); letter-spacing:.04em; }
+  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+  .cal-grid .dow{ text-align:center; font-size:10px; letter-spacing:.06em; color:var(--gold); text-transform:uppercase; padding-bottom:6px; }
+  .cal-grid .day{
+    aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+    font-size:13.5px; color:var(--espresso-soft); position:relative;
+  }
+  .cal-grid .day.empty{ visibility:hidden; }
+  .cal-grid .day.the-day{
+    color:var(--ivory); font-family:'PT Serif',serif; font-style:italic; font-weight:400;
+  }
+  .cal-grid .day.the-day .ring{
+    position:absolute; inset:2px; border-radius:50%;
+    background:var(--gold);
+    box-shadow:0 0 0 0 rgba(190,154,95,.5);
+    animation:pulseRing 2.4s ease-out infinite;
+  }
+  .cal-grid .day.the-day span{ position:relative; z-index:2; }
+  @keyframes pulseRing{
+    0%{ box-shadow:0 0 0 0 rgba(190,154,95,.45); }
+    70%{ box-shadow:0 0 0 10px rgba(190,154,95,0); }
+    100%{ box-shadow:0 0 0 0 rgba(190,154,95,0); }
+  }
+  .calendar-foot{ margin-top:22px; text-align:center; }
+  .calendar-foot .big-date{ font-family:'PT Serif',serif; font-style:italic; font-size:22px; color:var(--emerald); }
+  .calendar-foot .time{ margin-top:6px; font-size:13px; letter-spacing:.18em; color:var(--gold); text-transform:uppercase; }
+
+  /* ---- event info ---- */
+  .info-card{ margin-top:8px; padding:6px 0 2px; position:relative; }
+  .info-row{ display:flex; gap:16px; padding:16px 0; border-bottom:1px solid rgba(251,246,236,.14); }
+  .info-row:last-of-type{ border-bottom:none; }
+  .info-row .ic{ width:20px; flex:0 0 20px; margin-top:3px; color:var(--gold-light); }
+  .info-row .t{ font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold-light); }
+  .info-row .v{ margin-top:4px; font-size:16px; font-family:'PT Serif',serif; font-style:italic; }
+
+  /* ---- map ---- */
+  .map-frame{ margin-top:28px; border:1px solid var(--beige-deep); border-radius:var(--radius); overflow:hidden; height:280px; background:var(--beige); position:relative; }
+  .map-frame iframe{ width:100%; height:100%; border:0; filter:sepia(8%) saturate(92%); }
+  .map-fallback{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px; color:var(--espresso-soft); font-size:12px; text-align:center; padding:20px; background:var(--beige); }
+
+  /* ---- dress code ---- */
+  .swatches{ display:flex; gap:16px; margin-top:30px; flex-wrap:wrap; }
+  .swatch{ text-align:center; }
+  .swatch .dot{ width:52px; height:52px; border-radius:50%; margin:0 auto 8px; border:1px solid rgba(74,44,51,.12); box-shadow:var(--shadow); }
+  .swatch .name{ font-size:11px; letter-spacing:.06em; color:var(--espresso-soft); }
+  .dress-note{ margin-top:24px; font-size:14px; line-height:1.8; color:var(--espresso-soft); }
+
+  /* ---- rsvp ---- */
+  .rsvp-form{ margin-top:32px; display:flex; flex-direction:column; gap:20px; }
+  .field{ display:flex; flex-direction:column; gap:10px; }
+  .field label{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--gold-light); line-height:1.6; }
+  .field input{
+    background:rgba(251,246,236,.08); border:1px solid rgba(251,246,236,.24); padding:14px 18px;
+    font-family:'Montserrat',sans-serif; font-size:15px; color:var(--ivory); border-radius:var(--radius-sm);
+  }
+  .field input::placeholder{ color:rgba(251,246,236,.45); }
+  .radio-group{ display:flex; flex-direction:column; gap:12px; }
+  .radio-group label{
+    display:flex; align-items:center; gap:14px; text-align:left; justify-content:flex-start;
+    padding:15px 18px 15px 48px; position:relative;
+    border:1px solid rgba(251,246,236,.24); border-radius:var(--radius-sm);
+    font-size:13.5px; letter-spacing:.02em; color:rgba(251,246,236,.82); text-transform:none;
+    cursor:pointer; transition:all .3s var(--ease);
+  }
+  .radio-group label::before{
+    content:""; position:absolute; left:18px; top:50%; transform:translateY(-50%);
+    width:18px; height:18px; border-radius:50%; border:1.5px solid var(--gold-light);
+    background:transparent; transition:.3s var(--ease);
+  }
+  .radio-group input{ display:none; }
+  .radio-group label:has(input:checked){ background:rgba(251,246,236,.1); border-color:var(--gold-light); color:var(--ivory); }
+  .radio-group label:has(input:checked)::before{ background:var(--gold-light); box-shadow: inset 0 0 0 3px var(--emerald); }
+  .submit-btn{
+    margin-top:6px; padding:17px; text-align:center; background:var(--gold-light); color:var(--emerald);
+    font-size:12.5px; letter-spacing:.2em; text-transform:uppercase; border-radius:var(--radius-sm);
+    transition:background .35s var(--ease), transform .2s var(--ease);
+  }
+  .submit-btn:hover{ background:var(--gold-pale); }
+  .submit-btn:active{ transform:scale(.98); }
+  .thanks{ display:none; text-align:center; padding:30px 20px 0; }
+  .thanks.show{ display:block; }
+  .thanks .glyph2{ font-size:30px; color:var(--gold-light); margin-bottom:14px; }
+
+  /* RSVP панелі мен футердің арасында аздап крем фон көрініп тұрсын */
+  #rsvpSection{ margin-bottom:34px; }
+
+  /* ---- footer ---- */
+  footer{ padding:64px 0 44px; text-align:center; background:var(--emerald); color:var(--cream); border-radius:var(--radius) var(--radius) 0 0; }
+  footer .fnames{ font-family:'KZ Vivaldi','PT Serif',serif; font-style:normal; font-size:38px; margin-top:14px; }
+  footer .heart{ color:var(--gold-light); }
+  footer .credit{ margin-top:40px; font-size:10.5px; letter-spacing:.1em; color:rgba(251,246,236,.4); }
+
+  /* ---- music widget: батырма + айналасында айналып тұрған ән атауы ---- */
+  .music-widget{
+    position:fixed; bottom:18px; right:18px; z-index:60;
+    width:96px; height:96px;
+  }
+  .music-ring{ position:absolute; inset:0; }
+  .music-ring text{ font-family:'Montserrat',sans-serif; font-size:7.6px; font-weight:500; letter-spacing:.06em; fill:var(--gold-light); text-transform:uppercase; }
+  .music-widget.playing .music-ring{ animation:ringSpin 16s linear infinite; }
+  @keyframes ringSpin{ to{ transform:rotate(360deg); } }
+  #music-btn{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:50px; height:50px; border-radius:50%;
+    background:var(--emerald); color:var(--gold-light);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:var(--shadow); font-size:18px;
+    transition:transform .3s var(--ease);
+  }
+  #music-btn.playing .disc{ animation:spin 3.2s linear infinite; }
+  #music-btn:active{ transform:translate(-50%,-50%) scale(.92); }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* ---- falling petals (background ambience) ---- */
+  #petals{ position:fixed; inset:0; z-index:5; pointer-events:none; overflow:hidden; }
+  .petal{
+    position:absolute; top:-6vh;
+    left:var(--x);
+    width:var(--size); height:calc(var(--size) * 0.82);
+    background:linear-gradient(160deg, var(--p1), var(--p2));
+    border-radius:0% 100% 0% 100%;
+    opacity:0;
+    filter:drop-shadow(0 2px 3px rgba(74,44,51,.08));
+    animation:petalFall var(--dur) linear var(--delay) infinite;
+    will-change:transform, opacity;
+  }
+  @keyframes petalFall{
+    0%{ transform:translate(0,0) rotate(0deg); opacity:0; }
+    6%{ opacity:.9; }
+    50%{ transform:translate(var(--sway), 58vh) rotate(190deg); }
+    92%{ opacity:.85; }
+    100%{ transform:translate(0, 116vh) rotate(360deg); opacity:0; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    #petals{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= FALLING PETALS ================= -->
+<div id="petals"></div>
+
+<!-- ================= HERO + ФОТО ================= -->
+<div class="photo-band">
+  <div class="photo-band-bg"></div>
+  <div class="photo-band-overlay"></div>
+
+  <header class="hero">
+    <div class="kicker">Тойға шақыру</div>
+    <h1 class="names">
+      Нұрсұлтан
+      <span class="and">&</span>
+      Айым
+    </h1>
+    <div class="subdate">7 ҚАРАША 2026 · 17:00</div>
+  </header>
+
+  <!-- ================= ШАҚЫРУ МӘТІНІ ================= -->
+  <section>
+    <div class="wrap reveal">
+      <div class="eyebrow" style="text-align:center; display:block;">Шақыру</div>
+      <div class="invite-card">
+        <p>Құрметті туыстарымыз бен достарымыз!</p>
+        <p>Біз өміріміздің ең маңызды сәттерінің бірін сіздермен бөлісуге қуаныштымыз.</p>
+        <p>Сіздермен кездесуді асыға күтеміз.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<main>
+
+  <!-- ================= ТАЙМЕР ================= -->
+  <section class="dark">
+    <div class="wrap reveal" style="padding-top:70px; padding-bottom:70px;">
+      <div class="eyebrow">Тойға дейін</div>
+      <h2 class="section-title">Кері санақ</h2>
+      <div class="countdown" id="countdown">
+        <div class="cell"><div class="num" id="cd-days">00</div><div class="lab">күн</div></div>
+        <div class="cell"><div class="num" id="cd-hours">00</div><div class="lab">сағат</div></div>
+        <div class="cell"><div class="num" id="cd-min">00</div><div class="lab">минут</div></div>
+        <div class="cell"><div class="num" id="cd-sec">00</div><div class="lab">секунд</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= КҮНТІЗБЕ ================= -->
+  <section>
+    <div class="wrap reveal">
+      <div class="eyebrow">Мерекелі күн</div>
+      <h2 class="section-title">Той күні</h2>
+      <div class="calendar-card">
+        <div class="calendar-head"><div class="month">Қараша · 2026</div></div>
+        <div class="cal-grid">
+          <div class="dow">Дс</div><div class="dow">Сс</div><div class="dow">Ср</div><div class="dow">Бс</div><div class="dow">Жм</div><div class="dow">Сб</div><div class="dow">Жс</div>
+          <div class="day empty"></div><div class="day empty"></div><div class="day empty"></div><div class="day empty"></div><div class="day empty"></div><div class="day empty"></div><div class="day">1</div>
+          <div class="day">2</div><div class="day">3</div><div class="day">4</div><div class="day">5</div><div class="day">6</div>
+          <div class="day the-day"><div class="ring"></div><span>7</span></div>
+          <div class="day">8</div>
+          <div class="day">9</div><div class="day">10</div><div class="day">11</div><div class="day">12</div><div class="day">13</div><div class="day">14</div><div class="day">15</div>
+          <div class="day">16</div><div class="day">17</div><div class="day">18</div><div class="day">19</div><div class="day">20</div><div class="day">21</div><div class="day">22</div>
+          <div class="day">23</div><div class="day">24</div><div class="day">25</div><div class="day">26</div><div class="day">27</div><div class="day">28</div><div class="day">29</div>
+          <div class="day">30</div><div class="day empty"></div><div class="day empty"></div><div class="day empty"></div><div class="day empty"></div><div class="day empty"></div><div class="day empty"></div>
+        </div>
+        <div class="calendar-foot">
+          <div class="big-date">7 қараша, сенбі</div>
+          <div class="time">17:00</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ТОЙ ТУРАЛЫ ================= -->
+  <section class="dark">
+    <div class="wrap reveal" style="padding-top:70px; padding-bottom:70px;">
+      <div class="eyebrow">Той туралы</div>
+      <h2 class="section-title">Күні мен орны</h2>
+      <div class="info-card">
+        <div class="info-row"><div class="ic">◆</div><div><div class="t">Күні</div><div class="v">7 қараша 2026, сенбі</div></div></div>
+        <div class="info-row"><div class="ic">◆</div><div><div class="t">Уақыты</div><div class="v">17:00</div></div></div>
+        <div class="info-row"><div class="ic">◆</div><div><div class="t">Мекеме</div><div class="v">Банкетный зал "Agugai"</div></div></div> 
+        <div class="info-row"><div class="ic">◆</div><div><div class="t">Мекенжайы</div><div class="v">Қорғалжын, 76</div></div></div> 
+        <div class="info-row"><div class="ic">◆</div><div><div class="t">Телефон</div><div class="v">+7 (701) 701 40-78</div></div></div> 
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= КАРТА ================= -->
+  <section>
+    <div class="wrap reveal">
+      <div class="eyebrow">Жол картасы</div>
+      <h2 class="section-title">Қалай жетуге болады</h2>
+      <div class="map-frame">
+        <!-- 2GIS виджеті: Agugai банкет залы, шоссе Коргалжын, 76, Астана -->
+        <a class="dg-widget-link" href="https://2gis.kz/astana/firm/70000001062741140/71.310737,51.132839?utm_medium=widget-source&amp;utm_campaign=firmsonmap&amp;utm_source=bigMap">Agugai — 2ГИС картасында қараңыз</a>
+        <div class="dg-widget-link"><a href="https://2gis.kz/astana/directions/points/%7C71.310737,51.132839%3B70000001062741140?utm_medium=widget-source&amp;utm_campaign=firmsonmap&amp;utm_source=route">Жол сілтеу</a></div>
+        <script charset="utf-8" src="https://widgets.2gis.com/js/DGWidgetLoader.js"></script>
+        <script charset="utf-8">
+          new DGWidgetLoader({
+            "width":"100%",
+            "height":280,
+            "borderColor":"#E3AFB4",
+            "pos":{"lat":51.132839,"lon":71.310737,"zoom":16},
+            "opt":{"city":"astana"},
+            "org":[{"id":"70000001062741140"}]
+          });
+        </script>
+        <noscript>
+          <div class="map-fallback">Карта көру үшін JavaScript қосыңыз.<br>
+            <a href="https://2gis.kz/astana/geo/70000001062741140" target="_blank" rel="noopener">2gis.kz/astana/geo/70000001062741140</a>
+          </div>
+        </noscript>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= КИІМ ҮЛГІСІ ================= -->
+  <section>
+    <div class="wrap reveal">
+      <div class="eyebrow">Киім үлгісі</div>
+      <h2 class="section-title">Кештің палитрасы</h2>
+      <div class="swatches">
+        <div class="swatch"><div class="dot" style="background:#F1E1C6"></div><div class="name">Айвори</div></div>
+        <div class="swatch"><div class="dot" style="background:#BE9A5F"></div><div class="name">Алтын</div></div>
+        <div class="swatch"><div class="dot" style="background:#732E40"></div><div class="name">Күрең раушан</div></div>
+        <div class="swatch"><div class="dot" style="background:#E3AFB4"></div><div class="name">Раушан</div></div>
+        <div class="swatch"><div class="dot" style="background:#8C6B70"></div><div class="name">Мокко</div></div>
+      </div>
+      <p class="dress-note">Кешке жылы әрі талғампаз түстерде келуіңізді сұраймыз. Ақ түсті киюден аулақ болыңызшы - бұл түс қалыңдыққа арналған.</p>
+    </div>
+  </section>
+
+  <!-- ================= RSVP ================= -->
+  <section class="dark" id="rsvpSection">
+    <div class="wrap reveal" style="padding-top:70px; padding-bottom:70px;">
+      <div class="eyebrow">Сауалнама</div>
+      <h2 class="section-title">Сауалнама</h2>
+      <p class="lead">Тойға қатысуыңызды растауыңызды сұраймыз. Дайындыққа көмектесу үшін 1 қарашаға дейін хабарласуыңызды өтінеміз.</p> <!-- TODO: мерзімді нақтылаңыз -->
+
+      <form class="rsvp-form" id="rsvpForm">
+        <div class="field">
+          <label for="fname">Аты-жөніңіз</label>
+          <input id="fname" name="name" type="text" placeholder="Аты-жөніңізді жазыңыз" required>
+        </div>
+        <div class="field">
+          <label>Жұбайыңызбен келсеніз, есімдеріңізді бірге жаза кетіңіз</label>
+          <div class="radio-group">
+            <label><input type="radio" name="attend" value="yes" checked><span>Әрине, келемін</span></label>
+            <label><input type="radio" name="attend" value="yes_spouse"><span>Жұбайыммен келемін</span></label>
+            <label><input type="radio" name="attend" value="no"><span>Келе алмаймын</span></label>
+          </div>
+        </div>
+        <button type="submit" class="submit-btn">Жауапты жіберу</button>
+      </form>
+
+      <div class="thanks" id="thanks">
+        <div class="glyph2">✦</div>
+        <div class="section-title" style="font-size:22px;">Рақмет!</div>
+        <p class="lead">Жауабыңызды алдық, сіздермен кездесуге асыға күтеміз.</p>
+      </div>
+      <p style="margin-top:18px; font-size:11px; color:rgba(251,246,236,.4);">//// TODO: жауаптарды сеніп тапсыратын серверге қосу (Google Forms / Telegram-бот) - қазір тек осы құрылғыда сақталады, төмендегі жазбаны қараңыз ////</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <svg class="ornament" viewBox="0 0 240 40" xmlns="http://www.w3.org/2000/svg" style="width:90px; margin:0 auto 18px;">
+    <path d="M2 20 C 40 20 40 4 70 4 C 92 4 92 20 114 20 C 92 20 92 36 70 36 C 40 36 40 20 2 20 Z M120 20 C 158 20 158 4 188 4 C 210 4 210 20 232 20 C 210 20 210 36 188 36 C 158 36 158 20 120 20 Z"/>
+  </svg>
+  <div class="eyebrow" style="color:var(--gold-light);">Сүйіспеншілікпен</div>
+  <div class="fnames">Нұрсұлтан <span class="heart">❤</span> Айым</div>
+  <div class="credit">ТОЙ · 7 ҚАРАША 2026</div>
+</footer>
+
+<!-- ================= MUSIC ================= -->
+<!-- TODO: ән атауы мен орындаушыны ауыстырыңыз, assets/music.mp3 файлын нақты әуенмен алмастырыңыз -->
+<div class="music-widget" id="musicWidget">
+  <svg class="music-ring" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <path id="ringPath" d="M50,50 m-40,0 a40,40 0 1,1 80,0 a40,40 0 1,1 -80,0"/>
+    </defs>
+    <text>
+      <textPath href="#ringPath" startOffset="0%">Ән атауы — Орындаушы &#8226; Ән атауы — Орындаушы &#8226; </textPath>
+    </text>
+  </svg>
+  <button id="music-btn" aria-label="Әуенді қосу" title="Әуенді қосу">
+    <span class="disc">🎵</span>
+  </button>
+</div>
+<audio id="bgm" src="assets/песня.mp3" loop preload="none"></audio>
+
+<script>
+/* =========================================================
+   //// TODO ////  Жыл 2026 деп болжам жасалды - қажет болса өзгертіңіз
+   Формат: 'ЖЖЖЖ-АА-КҮКҮTСС:ММ:00+05:00'  (+05:00 - Астана уақыты)
+========================================================= */
+const WEDDING_DATE = '2026-11-07T17:00:00+05:00'; // <-- TODO: жылын тексеріңіз/өзгертіңіз
+
+/* ---------- falling petals ---------- */
+(function(){
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion) return;
+  const wrapEl = document.getElementById('petals');
+  const PETAL_COLORS = [
+    ['#F6C9CF','#E9A0AC'],
+    ['#F9D9DE','#EDB2BC'],
+    ['#F2BFC8','#E092A0'],
+    ['#FBE3E6','#EFC0C8']
+  ];
+  const COUNT = 22;
+  for(let i=0;i<COUNT;i++){
+    const el = document.createElement('div');
+    el.className = 'petal';
+    const size = (10 + Math.random()*12).toFixed(1) + 'px';
+    const x = (Math.random()*100).toFixed(1) + 'vw';
+    const sway = (Math.random()*80 - 40).toFixed(0) + 'px';
+    const dur = (9 + Math.random()*9).toFixed(1) + 's';
+    const delay = (-Math.random()*18).toFixed(1) + 's';
+    const [p1,p2] = PETAL_COLORS[Math.floor(Math.random()*PETAL_COLORS.length)];
+    el.style.setProperty('--size', size);
+    el.style.setProperty('--x', x);
+    el.style.setProperty('--sway', sway);
+    el.style.setProperty('--dur', dur);
+    el.style.setProperty('--delay', delay);
+    el.style.setProperty('--p1', p1);
+    el.style.setProperty('--p2', p2);
+    wrapEl.appendChild(el);
+  }
+})();
+
+/* ---------- music toggle (батырма + айналасында айналатын ән атауы) ---------- */
+const musicWidget = document.getElementById('musicWidget');
+const musicBtn = document.getElementById('music-btn');
+const bgm = document.getElementById('bgm');
+musicBtn.addEventListener('click', () => {
+  if (bgm.paused){
+    bgm.play().catch(()=>{});
+    musicBtn.classList.add('playing');
+    musicWidget.classList.add('playing');
+  } else {
+    bgm.pause();
+    musicBtn.classList.remove('playing');
+    musicWidget.classList.remove('playing');
+  }
+});
+
+/* ---------- scroll reveal ---------- */
+const revealEls = document.querySelectorAll('.reveal');
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in-view'); io.unobserve(e.target); } });
+}, { threshold: 0.18 });
+revealEls.forEach(el=>io.observe(el));
+
+/* ---------- countdown ---------- */
+function pad(n){ return String(n).padStart(2,'0'); }
+function tickCountdown(){
+  const target = new Date(WEDDING_DATE).getTime();
+  const now = Date.now();
+  let diff = Math.max(0, target - now);
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor(diff % 86400000 / 3600000);
+  const m = Math.floor(diff % 3600000 / 60000);
+  const s = Math.floor(diff % 60000 / 1000);
+  document.getElementById('cd-days').textContent = pad(d);
+  document.getElementById('cd-hours').textContent = pad(h);
+  document.getElementById('cd-min').textContent = pad(m);
+  document.getElementById('cd-sec').textContent = pad(s);
+}
+tickCountdown();
+setInterval(tickCountdown, 1000);
+
+/* ---------- RSVP form ----------
+   Жауаптар осы браузердің localStorage-іне сақталады.
+   МАҢЫЗДЫ: localStorage - тек осы құрылғыда/браузерде жұмыс істейді.
+   Яғни әр қонақ өз телефонынан жауап бергенде, ол жауап СОЛ телефонда
+   қалады, сізге автоматты түрде жетпейді. Барлық қонақтардың жауабын
+   бір жерге жинау үшін нақты backend қажет (мысалы Google Forms,
+   Telegram-бот немесе шағын серверлік функция). Бұл нұсқа - жылдам,
+   серверсіз демо-нұсқа. */
+const ATTEND_LABELS = {
+  yes: 'Әрине, келемін',
+  yes_spouse: 'Жұбайыммен келемін',
+  no: 'Келе алмаймын'
+};
+function loadResponses(){
+  try{ return JSON.parse(localStorage.getItem('rsvpResponses') || '[]'); }
+  catch(e){ return []; }
+}
+function saveResponse(name, attendValue){
+  const list = loadResponses();
+  list.push({
+    guest: name,
+    answer: ATTEND_LABELS[attendValue] || attendValue,
+    ts: new Date().toISOString()
+  });
+  localStorage.setItem('rsvpResponses', JSON.stringify(list));
+}
+
+const form = document.getElementById('rsvpForm');
+const thanks = document.getElementById('thanks');
+form.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const name = document.getElementById('fname').value.trim();
+  const attendValue = form.querySelector('input[name="attend"]:checked').value;
+  saveResponse(name, attendValue);
+  form.style.display = 'none';
+  thanks.classList.add('show');
+});
+
+/* ---------- /zver: жауаптарды көру және Excel-ге жүктеп алу ----------
+   Мекенжай жолына "/zver" (немесе "?zver", "#zver") қосылса, экранға
+   осы құрылғыда жиналған жауаптар тізімі мен "Excel-ге жүктеу" батырмасы
+   шығады. Файл "Гости_свадьбы.xlsx" үлгісіндегі "Гость"/"Ответ" бағандарымен
+   жүктеледі. */
+(function(){
+  const url = (location.pathname + location.search + location.hash).toLowerCase();
+  if (!url.includes('zver')) return;
+
+  const responses = loadResponses();
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed; inset:0; z-index:999; background:rgba(74,44,51,.96); color:#FFFCFA; overflow-y:auto; padding:32px 20px 60px; font-family:Montserrat,sans-serif;';
+
+  const rowsHtml = responses.length
+    ? responses.map((r,i)=>`<tr style="border-bottom:1px solid rgba(255,255,255,.15);">
+        <td style="padding:10px 8px; opacity:.6;">${i+1}</td>
+        <td style="padding:10px 8px;">${(r.guest || '').replace(/</g,'&lt;')}</td>
+        <td style="padding:10px 8px;">${r.answer}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="3" style="padding:20px 8px; opacity:.7;">Әзірге жауаптар жоқ (осы құрылғыда).</td></tr>`;
+
+  overlay.innerHTML = `
+    <div style="max-width:640px; margin:0 auto;">
+      <div style="font-size:11px; letter-spacing:.25em; text-transform:uppercase; color:#DEC08A;">Әкімші тақтасы</div>
+      <h2 style="font-family:'KZ Balmoral','PT Serif',serif; font-size:30px; margin:10px 0 6px;">Жауаптар тізімі</h2>
+      <p style="font-size:13px; line-height:1.7; opacity:.75; margin-bottom:20px;">
+        Тек осы құрылғыда жиналған жауаптар көрсетіліп тұр (localStorage). Барлығы: ${responses.length}.
+      </p>
+      <table style="width:100%; border-collapse:collapse; font-size:14px; margin-bottom:24px;">
+        <thead>
+          <tr style="border-bottom:1px solid rgba(255,255,255,.3);">
+            <th style="text-align:left; padding:8px; font-size:11px; letter-spacing:.1em; text-transform:uppercase; opacity:.6;">#</th>
+            <th style="text-align:left; padding:8px; font-size:11px; letter-spacing:.1em; text-transform:uppercase; opacity:.6;">Гость</th>
+            <th style="text-align:left; padding:8px; font-size:11px; letter-spacing:.1em; text-transform:uppercase; opacity:.6;">Ответ</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <button id="exportXlsxBtn" style="padding:15px 22px; background:#DEC08A; color:#4A2C33; border-radius:16px; font-size:12.5px; letter-spacing:.15em; text-transform:uppercase; cursor:pointer;">Excel-ге жүктеу</button>
+      <button id="closeAdminBtn" style="margin-left:12px; padding:15px 22px; background:transparent; color:#FFFCFA; border:1px solid rgba(255,255,255,.35); border-radius:16px; font-size:12.5px; letter-spacing:.15em; text-transform:uppercase; cursor:pointer;">Жабу</button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  document.getElementById('exportXlsxBtn').addEventListener('click', ()=>{
+    const data = responses.length
+      ? responses.map(r => ({ 'Гость': r.guest, 'Ответ': r.answer }))
+      : [{ 'Гость': '', 'Ответ': '' }];
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Лист1');
+    XLSX.writeFile(wb, 'Гости_свадьбы.xlsx');
+  });
+  document.getElementById('closeAdminBtn').addEventListener('click', ()=>{
+    overlay.remove();
+  });
+})();
+</script>
+
+</body>
+</html>
